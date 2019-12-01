@@ -6,7 +6,7 @@ library(forcats)
 library(jpeg)
 library(grid)
 
-ramen_ratings = readr::read_csv("https://github.com/aslam200/030-032-035_datamining_polibatam/ramen-ratings.csv")
+ramen_ratings = readr::read_csv("https://raw.githubusercontent.com/aslam200/030-032-035_datamining_polibatam/master/ramen-ratings.csv")
 
 ramen_ratings %>%
   arrange(style,desc(stars)) %>%
