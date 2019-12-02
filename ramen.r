@@ -24,14 +24,8 @@ StarsMeanByCountry <- mutate(summarise(group_by(clean_ramen_ratings,country),
 StarsMeanByCountry <- arrange(StarsMeanByCountry, desc(stars_mean))
 TopTenCountries <- StarsMeanByCountry[1:10,] #Top 10 countries
 
-#Memainkan dengan ggplot
-ggplot(TopTenCountries, mapping = aes(reorder(country, stars_mean), stars_mean)) +
-  geom_col(colour = "black", size =1, fill = "white", width = .75) +  coord_flip() +
-  geom_text(aes(label=stars_mean), vjust=.1, hjust= 1.05, color="blue", size=4)
-
-
 #Top 10 negara dengan peringkat terbaik
-PlotA <- ggplot(TopTenCountries, mapping = aes(reorder(country, stars_mean), stars_mean, fill =country)) +
+ggplot(TopTenCountries, mapping = aes(reorder(country, stars_mean), stars_mean, fill =country)) +
   geom_bar(stat="identity", colour ="black") + coord_flip() +
   theme(legend.position="none") +
   scale_fill_brewer(palette="Set3") +
@@ -63,7 +57,7 @@ PlotB <- StylesOfCountries %>%
 
 
 
-#Notes:
+#Referensi
 #https://stackoverflow.com/questions/25664007/reorder-bars-in-geom-bar-ggplot2 #Discovering reorder
 #https://ggplot2.tidyverse.org/reference/geom_text.html #Discovering geom_text
 #https://rpubs.com/woobe/ggplot2_ref_part02 #Discovering some new colors for ggplot
