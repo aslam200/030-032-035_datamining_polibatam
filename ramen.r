@@ -1,76 +1,70 @@
-library(dplyr)
+ramen_ratings <- readr::read_csv("https://raw.githubusercontent.com/aslam200/030-032-035_datamining_polibatam/master/ramen-ratings.csv")
 library(tidyverse)
-library(rayshader)
-library(ggbeeswarm)
-library(forcats)
-library(jpeg)
-library(grid)
-
-ramen_ratings = readr::read_csv("https://raw.githubusercontent.com/aslam200/030-032-035_datamining_polibatam/master/ramen-ratings.csv")
+view(ramen_ratings)
 
 ramen_ratings %>%
-  arrange(style,desc(stars)) %>%
-  mutate(stylenum = 1) %>%
-  filter(!is.na(style)) -> ramen_arranged
+  summarise(NAs = sum(is.na(stars)))
 
-for(i in 1:(nrow(ramen_arranged)-1)) {
-  if(ramen_arranged[i,"style"] == ramen_arranged[i+1,"style"]) {
-    ramen_arranged[i+1,"stylenum"] = ramen_arranged[i,"stylenum"] + 1
-  }
-}
+clean_ramen_ratings <- ramen_ratings %>%
+  filter(!is.na(stars))
 
-img = readJPEG("ramen.jpg")
-g = rasterGrob(img, interpolate=TRUE)
+#Ulasan cepat - Peringkat yang dimaksud menurut negara:
+clean_ramen_ratings %>%
+  group_by(country) %>%
+  summarise(Mean = mean(stars)) %>%
+  ggplot(clean_ramen_ratings, mapping = aes(reorder(country, Mean), Mean)) +
+  geom_col() +
+  coord_flip()
 
-ramen = ramen_arranged %>%
-  filter(style %in% c("Bowl","Cup","Pack","Tray")) %>%
-  arrange(stars) %>%
-  mutate(style = forcats::fct_infreq(style)) %>%
-  ggplot() +
-  geom_beeswarm(aes(x=style,y=stylenum,color=stars),size=0.7) +
-  scale_color_viridis_c("Stars") +
-  scale_y_continuous("",breaks = c()) +
-  scale_x_discrete("Ramen Style") +
-  ggtitle("Ramen ratings (select styles)") +
-  theme(axis.text.x = element_text(size=18),
-        axis.title.x = element_text(size=18),
-        legend.title = element_text(size=18),
-        legend.text = element_text(size=18),
-        panel.background = element_blank(),
-        title = element_text(size=18)) +
-  guides(color = guide_colorbar(nbin=1000, frame.colour=c("black")))
+#Membuat variabel dengan data yang digunakan sebelumnya:
+StarsMeanByCountry <- mutate(summarise(group_by(clean_ramen_ratings,country),
+                                       stars_mean = mean(stars))
+)
 
-ramenimage = ramen_arranged %>%
-  filter(style %in% c("Bowl","Cup","Pack","Tray")) %>%
-  arrange(stars) %>%
-  mutate(style = forcats::fct_infreq(style)) %>%
-  ggplot() +
-  geom_beeswarm(aes(x=style,y=stylenum,color=stars),size=0.7) +
-  scale_color_viridis_c("Stars") +
-  scale_y_continuous("",breaks = c()) +
-  scale_x_discrete("Ramen Style") +
-  annotation_custom(g, xmin=2, xmax=4, ymin=800, ymax=1800) +
-  ggtitle("Ramen ratings (select styles)") +
-  theme(axis.text.x = element_text(size=18),
-        axis.title.x = element_text(size=18),
-        legend.title = element_text(size=18),
-        legend.text = element_text(size=18),
-        panel.background = element_blank(),
-        title = element_text(size=18)) +
-  guides(color = guide_colorbar(nbin = 1000, frame.colour = c("black"))) 
+StarsMeanByCountry <- arrange(StarsMeanByCountry, desc(stars_mean))
+TopTenCountries <- StarsMeanByCountry[1:10,] #Top 10 countries
 
-plot_gg(list(ramenimage,ramen), pointcontract = 0.6, width = 8, height = 6, multicore = FALSE,
-        scale = 300, sunangle = 315-90, windowsize = c(800,800))
+#Memainkan dengan ggplot
+ggplot(TopTenCountries, mapping = aes(reorder(country, stars_mean), stars_mean)) +
+  geom_col(colour = "black", size =1, fill = "white", width = .75) +  coord_flip() +
+  geom_text(aes(label=stars_mean), vjust=.1, hjust= 1.05, color="blue", size=4)
 
 
-phivec = 20 + 70 * 1/(1 + exp(seq(-5, 12, length.out = 1080/2)))
-phivecfull = c(phivec, rev(phivec))
-thetavec = seq(0,360,length.out = 1081)[-1081]
-zoomvec = 0.5 + 0.3 * 1/(1 + exp(seq(-4, 11, length.out = 1080/2)))
-zoomvecfull = c(zoomvec, rev(zoomvec))
-render_camera(zoom=0.5,phi=30,theta=140)
+#Top 10 negara dengan peringkat terbaik
+PlotA <- ggplot(TopTenCountries, mapping = aes(reorder(country, stars_mean), stars_mean, fill =country)) +
+  geom_bar(stat="identity", colour ="black") + coord_flip() +
+  theme(legend.position="none") +
+  scale_fill_brewer(palette="Set3") +
+  geom_text(aes(label=stars_mean), vjust=.1, hjust= 1, color="black", size=4,fontface = "bold") +
+  labs(title="Top 10 Countries",x="Countries", y="Stars Mean")
 
-for(i in seq(1,1080,1)) {
-  render_camera(zoom = zoomvecfull[i], phi = phivecfull[i],theta = thetavec[i])
-  render_snapshot(glue::glue("ramen{i}"))
-}
+
+###############################################################################################
+#Styles, Countries, jumlah baris per masing-masing dan Stars
+StylesOfCountries <- mutate(summarise(group_by(clean_ramen_ratings,style, country),
+                                      count = n(),
+                                      stars_mean = mean(stars))
+)
+
+#Hapus NA's
+StylesOfCountries <- StylesOfCountries %>%
+  filter(!is.na(style))
+
+view(StylesOfCountries)
+
+PlotB <- StylesOfCountries %>%
+  filter(count >=50) %>%
+  ggplot(StylesOfCountries, mapping = aes(count, style)) +
+  geom_point() +
+  geom_text(aes(label=country),angle =45, check_overlap = T) +
+  geom_text(aes(label=stars_mean), vjust=2, hjust=-.1,angle=45, color="red",check_overlap = T) +
+  labs(title="Styles of Countries and their Stars Mean",x="Number of records", y="Types of styles")
+
+
+
+
+#Notes:
+#https://stackoverflow.com/questions/25664007/reorder-bars-in-geom-bar-ggplot2 #Discovering reorder
+#https://ggplot2.tidyverse.org/reference/geom_text.html #Discovering geom_text
+#https://rpubs.com/woobe/ggplot2_ref_part02 #Discovering some new colors for ggplot
+#http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization #A little help
